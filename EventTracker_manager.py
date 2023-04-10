@@ -599,7 +599,8 @@ def main():
 
             # <editor-fold desc="Get inputs, files necessary to analysis">
             # Get input of critical information for update, dates and file locations
-            source_folder, geography, geopgraphy_folder, recalculate_value, period_list = etf.underperformance_report_input()
+            source_folder, geography, geopgraphy_folder, recalculate_value, period_list, level, irradiance_threshold \
+                = etf.underperformance_report_input()
 
             #print(source_folder, "\n" , geography, "\n" , geopgraphy_folder, "\n" ,recalculate_value,"\n" , period_list)
 
@@ -684,6 +685,14 @@ def main():
             # Create all component incidents df
             incidents = pd.concat([final_df_to_add['Active Events'], final_df_to_add['Closed Events']])
 
+            if level == "All":
+                pass
+            elif level == 'Inverter only':
+                incidents = incidents.loc[(incidents['Related Component'].str.contains("INV")) | (incidents['Related Component'].str.contains("Inverter"))]
+            elif level == 'Inverter level':
+                incidents = incidents.loc[~(incidents['Related Component'].str.contains("CB")) | ~(
+                    incidents['Related Component'].str.contains("DC"))| ~(
+                    incidents['Related Component'].str.contains("String"))]
 
             """# Correct active hours and energy loss to account for overlapping incidents
             print("Correcting overlapping events...")
@@ -716,7 +725,7 @@ def main():
             for period in period_list:
                 availability_period_df, activehours_period_df, incidents_corrected_period, date_range = \
                     etf.calculate_availability_in_period(incidents, period, component_data, df_all_irradiance,
-                                                         df_all_export, budget_pr, irradiance_threshold=20,
+                                                         df_all_export, budget_pr, irradiance_threshold=irradiance_threshold,
                                                          timestamp=15)
 
                 availability_fleet_per_period[period] = availability_period_df
@@ -735,7 +744,7 @@ def main():
                 data_period_df = etf.calculate_pr_in_period(incidents_period, availability_period, period,
                                                             component_data,
                                                             df_all_irradiance, df_all_export, budget_pr, budget_export,
-                                                            budget_irradiance, irradiance_threshold=20, timestamp=15)
+                                                            budget_irradiance, irradiance_threshold=irradiance_threshold, timestamp=15)
 
                 performance_fleet_per_period[period] = data_period_df.sort_index()
             # </editor-fold>
@@ -758,7 +767,7 @@ def main():
 
             underperformance_dest_file = geopgraphy_folder + \
                                          '/Event Tracker/Underperformance Reports/Underperformance Report ' \
-                                         + geography + "_" + date_range + '.xlsx'
+                                         + geography + "_" + date_range + "_" + level + '_irr' + str(irradiance_threshold) + '.xlsx'
 
             etf.create_underperformance_report(underperformance_dest_file,incidents_corrected_period, performance_fleet_per_period)
 
